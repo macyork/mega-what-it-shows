@@ -1,0 +1,60 @@
+---
+layout: runbook
+title: '#4471 · two causes, one ticket'
+owner: support desk
+status: open
+reviewed: 2026-10-31
+signature: 'v1.eyJzdWIiOiI4ODk3IiwiYXVkIjoiY2hhbGxlbmdlOndoYXQtaXQtc2hvd3MiLCJpYXQiOjE3OTM0NzUzMjAsImV4cCI6MTc5MzU2MTcyMH0.1WNZhKLBxQoO0PwnUuOuYlFz5vjxyeXVJUqmMgn7xdQ'
+---
+
+<script>
+  import CauseTable from '#lib/kb/CauseTable.svelte';
+  import Callout from '#lib/kb/Callout.svelte';
+  import RenderStamp from '#lib/kb/RenderStamp.svelte';
+</script>
+
+[#4471](/kb/incidents/4471) calls every report one issue with one fix queued. The reports hold
+two problems with two different fixes. The table below is built from the ticket export at render
+time, so the counts come from the data, not from this paragraph. Its "no ticket of its own" label
+comes from the export, which is older than the ticket filed below.
+
+<CauseTable ticket={4471} />
+
+<Callout kind="warn">
+The queued parser fix does not close #4471. It leaves the <code>hint</code> reports open, because
+their dates are wrong for a different reason.
+</Callout>
+
+## The two problems
+
+**`parser`: filed as [macyork/mega-what-it-shows#1](https://github.com/macyork/mega-what-it-shows/issues/1).** The shared parser reads every date month first, so a
+day-first tenant's dates come out flipped. It reaches every tenant here, on the app, email and
+form channels.
+
+**`hint`: filed as [macyork/mega-what-it-shows#2](https://github.com/macyork/mega-what-it-shows/issues/2).** The `booking-v3` form prints `MM/DD/YYYY` under its date
+field, so people type month first, and the form then reads the date the tenant's way, day first.
+It reaches only the day-first tenants on `booking-v3`, and only through the form channel. A
+change to the parser does not touch it. The fix is in the form.
+
+## How to tell them apart
+
+Use the tenant and the channel, not the subject or the intake tag. The rule is in
+`src/lib/kb/causes.ts`:
+
+1. Look up the tenant's locale and form in the tenant directory.
+2. A report through the form channel, from a tenant on `booking-v3`, is `hint`.
+3. Any other report from a day-first tenant is `parser`.
+
+The intake tag is a guess from the reporter's browser, so a reporter on an `en-US` browser gets
+`hint` wherever they work. The "tagged as" column shows where that goes wrong. The subject does
+not help either: the same subjects appear under both causes, which is how subject matching in
+[decision 0001](/kb/decisions/0001-dedupe-by-subject) put both into one ticket.
+
+## Still open
+
+The desk read the reports in the note under the table as a one-day move, not a flipped date.
+For example, one says the invite showed Tuesday 12 May and the calendar showed Monday 11 May.
+A month-first misreading does not explain that. They stay counted under the cause their tenant
+gives, and nobody has confirmed the cause. Check them again once the `parser` fix ships.
+
+<RenderStamp {signature} />
